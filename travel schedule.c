@@ -5,30 +5,36 @@
 #include <windows.h>
 #pragma warning(disable:4996)
 
-// ¿¬°á ¸®½ºÆ®ÀÇ ³ëµå Á¤ÀÇ
+// ì—°ê²° ë¦¬ìŠ¤íŠ¸ì˜ ë…¸ë“œ ì •ì˜
 typedef struct Node {
     char data[100];
     struct Node* next;
 } Node;
 
-// Ä«Å×°í¸® ±¸Á¶Ã¼ Á¤ÀÇ (Æ÷ÀÎÅÍ ¹è¿­ »ç¿ë)
+// ì¹´í…Œê³ ë¦¬ êµ¬ì¡°ì²´ ì •ì˜ (í¬ì¸í„° ë°°ì—´ ì‚¬ìš©)
 typedef struct Category {
     char name[100];
-    Node* heads[3];  //0: cafe, 1: restaurant, 2: attraction
+    Node* locations[3]; 
+    struct Category* next;
 } Category;
 
-// gotoxy ÇÔ¼ö Á¤ÀÇ
+// ì—¬í–‰ ê³„íš êµ¬ì¡°ì²´ ì •ì˜
+typedef struct TravelPlan {
+    Node* head;
+} TravelPlan;
+
+// gotoxy í•¨ìˆ˜ ì •ì˜
 void gotoxy(int x, int y) {
     COORD coord = { x, y };
     SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), coord);
 }
 
-// ¸®½ºÆ®¿¡ ³ëµå¸¦ Ãß°¡ÇÏ´Â ÇÔ¼ö (Áßº¹ È®ÀÎ Æ÷ÇÔ)
+// ë¦¬ìŠ¤íŠ¸ì— ë…¸ë“œë¥¼ ì¶”ê°€í•˜ëŠ” í•¨ìˆ˜ (ì¤‘ë³µ í™•ì¸ í¬í•¨)
 void addNode(Node** head, const char* data) {
     Node* temp = *head;
     while (temp != NULL) {
         if (strcmp(temp->data, data) == 0) {
-            // Áßº¹µÈ µ¥ÀÌÅÍ°¡ Á¸ÀçÇÏ¸é Ãß°¡ÇÏÁö ¾ÊÀ½
+            // ì¤‘ë³µëœ ë°ì´í„°ê°€ ì¡´ì¬í•˜ë©´ ì¶”ê°€í•˜ì§€ ì•ŠìŒ
             return;
         }
         temp = temp->next;
@@ -50,11 +56,11 @@ void addNode(Node** head, const char* data) {
     }
 }
 
-// ÆÄÀÏ¿¡¼­ µ¥ÀÌÅÍ¸¦ ÀĞ¾î¿Í Ä«Å×°í¸®¿¡ Ãß°¡ÇÏ´Â ÇÔ¼ö
+// íŒŒì¼ì—ì„œ ë°ì´í„°ë¥¼ ì½ì–´ì™€ ì¹´í…Œê³ ë¦¬ì— ì¶”ê°€í•˜ëŠ” í•¨ìˆ˜
 void readFileToCategory(const char* fileName, Node** head, int startLine, int endLine) {
     FILE* file = fopen(fileName, "r");
     if (file == NULL) {
-        printf("ÆÄÀÏÀ» ¿­ ¼ö ¾ø½À´Ï´Ù: %s\n", fileName);
+        printf("íŒŒì¼ì„ ì—´ ìˆ˜ ì—†ìŠµë‹ˆë‹¤: %s\n", fileName);
         return;
     }
 
@@ -62,7 +68,7 @@ void readFileToCategory(const char* fileName, Node** head, int startLine, int en
     int lineCount = 1;
     while (fgets(line, sizeof(line), file)) {
         if (lineCount >= startLine && lineCount <= endLine) {
-            line[strcspn(line, "\n")] = '\0';  // °³Çà ¹®ÀÚ Á¦°Å
+            line[strcspn(line, "\n")] = '\0';  // ê°œí–‰ ë¬¸ì ì œê±°
             addNode(head, line);
         }
         lineCount++;
@@ -74,7 +80,7 @@ void readFileToCategory(const char* fileName, Node** head, int startLine, int en
     fclose(file);
 }
 
-// ¸®½ºÆ®¸¦ Ãâ·ÂÇÏ´Â ÇÔ¼ö
+// ë¦¬ìŠ¤íŠ¸ë¥¼ ì¶œë ¥í•˜ëŠ” í•¨ìˆ˜
 void printList(Node* head) {
     Node* temp = head;
     int index = 1;
@@ -85,7 +91,7 @@ void printList(Node* head) {
     }
 }
 
-// ¸®½ºÆ®¸¦ ÇØÁ¦ÇÏ´Â ÇÔ¼ö
+// ë¦¬ìŠ¤íŠ¸ë¥¼ í•´ì œí•˜ëŠ” í•¨ìˆ˜
 void freeList(Node** head) {
     while (*head != NULL) {
         Node* temp = *head;
@@ -94,17 +100,34 @@ void freeList(Node** head) {
     }
 }
 
-// Ä«Å×°í¸®¸¦ ÃÊ±âÈ­ÇÏ´Â ÇÔ¼ö
+// ì¹´í…Œê³ ë¦¬ë¥¼ ì´ˆê¸°í™”í•˜ëŠ” í•¨ìˆ˜
 void initCategory(Category* category, const char* name) {
     strcpy(category->name, name);
     for (int i = 0; i < 3; i++) {
-        category->heads[i] = NULL;
+        category->locations[i] = NULL;
+    }
+    category->next = NULL;
+}
+
+void addCategory(Category** head, const char* name) {
+    Category* newCategory = (Category*)malloc(sizeof(Category));
+    initCategory(newCategory, name);
+
+    if (*head == NULL) {
+        *head = newCategory;
+    }
+    else {
+        Category* temp = *head;
+        while (temp->next != NULL) {
+            temp = temp->next;
+        }
+        temp->next = newCategory;
     }
 }
 
-void selectAndAddToPlan(Node* head, Node** planHead) {
+void selectAndAddToPlan(Node* head, TravelPlan* plan) {
     int selection;
-    printf("Ãâ·ÂµÈ ¸ñ·Ï¿¡¼­ ¼±ÅÃÇÒ Ç×¸ñÀÇ ¹øÈ£¸¦ ÀÔ·ÂÇÏ¼¼¿ä.  ");
+    printf("ì¶œë ¥ëœ ëª©ë¡ì—ì„œ ì„ íƒí•  í•­ëª©ì˜ ë²ˆí˜¸ë¥¼ ì…ë ¥í•˜ì„¸ìš”. ");
     scanf("%d", &selection);
 
     if (selection == 0) {
@@ -119,48 +142,48 @@ void selectAndAddToPlan(Node* head, Node** planHead) {
     }
 
     if (temp != NULL) {
-        addNode(planHead, temp->data);
-        printf("'%s'°¡ ¿©Çà °èÈ¹¿¡ Ãß°¡µÇ¾ú½À´Ï´Ù.\n", temp->data);
+        addNode(&plan->head, temp->data);
+        printf("'%s'ê°€ ì—¬í–‰ ê³„íšì— ì¶”ê°€ë˜ì—ˆìŠµë‹ˆë‹¤.\n", temp->data);
     }
     else {
-        printf("Àß¸øµÈ ¼±ÅÃÀÔ´Ï´Ù.\n");
+        printf("ì˜ëª»ëœ ì„ íƒì…ë‹ˆë‹¤.\n");
     }
 }
 
 void displayMenu() {
     gotoxy(0, 0);
-    printf("==========================\n");
-    printf("1. ¹Ù´Ù\n");
-    printf("2. µµ½Ã\n");
-    printf("3. °è°î\n");
-    printf("4. ¿©Çà °èÈ¹ º¸±â\n");
-    printf("============================#\n");
-    printf("¹øÈ£¸¦ ÀÔ·ÂÇÏ¼¼¿ä: ");
+    printf("##########################\n");
+    printf("1. ë°”ë‹¤\n");
+    printf("2. ë„ì‹œ\n");
+    printf("3. ê³„ê³¡\n");
+    printf("4. ì—¬í–‰ ê³„íš ë³´ê¸°\n");
+    printf("###########################\n");
+    printf("ë²ˆí˜¸ë¥¼ ì…ë ¥í•˜ì„¸ìš”: ");
 }
 
 void displayCategoryMenu(const char* category) {
     gotoxy(0, 0);
-    printf("###%s °ü·Ã ³î°Å¸®¸¦ ¼±ÅÃÇÏ¼¼¿ä###\n", category);
-    printf("1. Ä«Æä\n");
-    printf("2. ½Ä´ç\n");
-    printf("3. °ü±¤Áö\n");
+    printf("###%s ê´€ë ¨ ë†€ê±°ë¦¬ë¥¼ ì„ íƒí•˜ì„¸ìš”###\n", category);
+    printf("1. ì¹´í˜\n");
+    printf("2. ì‹ë‹¹\n");
+    printf("3. ê´€ê´‘ì§€\n");
     printf("============================\n");
-    printf("¹øÈ£¸¦ ÀÔ·ÂÇÏ¼¼¿ä (ÃÊ±â·Î µ¹¾Æ°¡·Á¸é 0À» ´©¸£¼¼¿ä.): ");
+    printf("ë²ˆí˜¸ë¥¼ ì…ë ¥í•˜ì„¸ìš”: (ëŒì•„ê°€ë ¤ë©´ 0 ì…ë ¥): ");
 }
 
 int processCategorySelection(int selection, int idx, Category* category, const char* filenames[], int ranges[][2]) {
     if (selection < 1 || selection > 3 || idx < 1 || idx > 3) {
-        printf("Àß¸øµÈ ¼±ÅÃÀÔ´Ï´Ù.\n");
+        printf("ì˜ëª»ëœ ì„ íƒì…ë‹ˆë‹¤.\n");
         return 0;
     }
-    Node** head = &category->heads[idx - 1];
+    Node** head = &category->locations[idx - 1];
     *head = NULL;
     readFileToCategory(filenames[selection - 1], head, ranges[idx - 1][0], ranges[idx - 1][1]);
     printList(*head);
     return 1;
 }
 
-void processNextCategory(Category* category, const char* filenames[], int ranges[][2], int selection, Node** planHead) {
+void processNextCategory(Category* category, const char* filenames[], int ranges[][2], int selection, TravelPlan* plan) {
     while (1) {
         system("cls");
         displayCategoryMenu(category->name);
@@ -170,14 +193,14 @@ void processNextCategory(Category* category, const char* filenames[], int ranges
             break;
         }
         if (processCategorySelection(selection, idx, category, filenames, ranges)) {
-            selectAndAddToPlan(category->heads[idx - 1], planHead);
+            selectAndAddToPlan(category->locations[idx - 1], plan);
         }
-        printf("°è¼ÓÇÏ·Á¸é ¾Æ¹« Å°³ª ´©¸£¼¼¿ä...\n");
-        getchar(); getchar(); // ÀÔ·Â ¹öÆÛ¸¦ ºñ¿ì°í ´ë±â
+        printf("ê³„ì†í•˜ë ¤ë©´ ì•„ë¬´ í‚¤ë‚˜ ëˆ„ë¥´ì„¸ìš”...\n");
+        getchar(); getchar(); // ì…ë ¥ ë²„í¼ë¥¼ ë¹„ìš°ê³  ëŒ€ê¸°
     }
 }
 
-void GUI(Category* categories, int ranges[][2], Node** planHead) {
+void GUI(Category* categories, int ranges[][2], TravelPlan* plan) {
     int keyword = 0;
     int selection = 0;
 
@@ -192,87 +215,92 @@ void GUI(Category* categories, int ranges[][2], Node** planHead) {
 
         if (keyword == 4) {
             system("cls");
-            printf("¿©Çà °èÈ¹:\n");
-            printList(*planHead);
+            printf("ì—¬í–‰ ê³„íš:\n");
+            printList(plan->head);
 
-            printf("°è¼ÓÇÏ·Á¸é ¾Æ¹« Å°³ª ÇÑ¹ø ´õ ´©¸£¼¼¿ä...\n");
-            getchar(); getchar(); // ÀÔ·Â ¹öÆÛ¸¦ ºñ¿ì°í ´ë±â
+            printf("ê³„ì†í•˜ë ¤ë©´ ì•„ë¬´ í‚¤ë‚˜ í•œë²ˆ ë” ëˆ„ë¥´ì„¸ìš”...\n");
+            getchar(); getchar(); // ì…ë ¥ ë²„í¼ë¥¼ ë¹„ìš°ê³  ëŒ€ê¸°
             continue;
         }
 
         switch (keyword) {
         case 1:
             system("cls");
-            printf("###¹Ù´Ù °ü·Ã Áö¿ª ¼±ÅÃÇÏ¼¼¿ä###\n");
-            printf("1. ºÎ»ê\n");
-            printf("2. °­¸ª\n");
-            printf("3. ¿©¼ö\n");
-            printf("============================\n");
-            printf("¹øÈ£¸¦ ÀÔ·ÂÇÏ¼¼¿ä: ");
+            printf("###ë°”ë‹¤ ê´€ë ¨ ì§€ì—­ ì„ íƒí•˜ì„¸ìš”###\n");
+            printf("1. ë¶€ì‚°\n");
+            printf("2. ê°•ë¦‰\n");
+            printf("3. ì—¬ìˆ˜\n");
+            printf("============================\n\n");
+            printf("ë²ˆí˜¸ë¥¼ ì…ë ¥í•˜ì„¸ìš”: ");
             scanf("%d", &selection);
             if (selection == 0 || selection < 1 || selection > 3) {
-                printf("Àß¸øµÈ ¼±ÅÃÀÔ´Ï´Ù.\n");
-                Sleep(1000); // 1ÃÊ ´ë±â ÈÄ ´Ù½Ã ¸Ş´º Ãâ·Â
+                printf("ì˜ëª»ëœ ì„ íƒì…ë‹ˆë‹¤.\n");
+                Sleep(1000); // 1ì´ˆ ëŒ€ê¸° í›„ ë‹¤ì‹œ ë©”ë‰´ ì¶œë ¥
                 break;
             }
-            processNextCategory(&categories[0], seaFilenames, ranges, selection, planHead);
+            processNextCategory(categories, seaFilenames, ranges, selection, plan);
             break;
         case 2:
             system("cls");
-            printf("###µµ½Ã °ü·Ã Áö¿ªÀ» ¼±ÅÃÇÏ¼¼¿ä###\n");
-            printf("1. ¼­¿ï\n");
-            printf("2. °æÁÖ\n");
-            printf("3. ´ëÀü\n");
+            printf("###ë„ì‹œ ê´€ë ¨ ì§€ì—­ì„ ì„ íƒí•˜ì„¸ìš”###\n");
+            printf("1. ì„œìš¸\n");
+            printf("2. ê²½ì£¼\n");
+            printf("3. ëŒ€ì „\n");
             printf("============================\n");
-            printf("¹øÈ£¸¦ ÀÔ·ÂÇÏ¼¼¿ä: ");
+            printf("ë²ˆí˜¸ë¥¼ ì…ë ¥í•˜ì„¸ìš”: ");
             scanf("%d", &selection);
             if (selection == 0 || selection < 1 || selection > 3) {
-                printf("Àß¸øµÈ ¼±ÅÃÀÔ´Ï´Ù.\n");
-                Sleep(1000); // 1ÃÊ ´ë±â ÈÄ ´Ù½Ã ¸Ş´º Ãâ·Â
+                printf("ì˜ëª»ëœ ì„ íƒì…ë‹ˆë‹¤.\n");
+                Sleep(1000); // 1ì´ˆ ëŒ€ê¸° í›„ ë‹¤ì‹œ ë©”ë‰´ ì¶œë ¥
                 break;
             }
-            processNextCategory(&categories[1], cityFilenames, ranges, selection, planHead);
+            processNextCategory(categories->next, cityFilenames, ranges, selection, plan);
             break;
         case 3:
             system("cls");
-            printf("###°è°î °ü·Ã Áö¿ª¸¦ ¼±ÅÃÇÏ¼¼¿ä###\n");
-            printf("1. ±«»ê\n");
-            printf("2. °¡Æò\n");
-            printf("============================\n");
-            printf("¹øÈ£¸¦ ÀÔ·ÂÇÏ¼¼¿ä: ");
+            printf("###ê³„ê³¡ ê´€ë ¨ ì§€ì—­ë¥¼ ì„ íƒí•˜ì„¸ìš”###\n");
+            printf("1. ê´´ì‚°\n");
+            printf("2. ê°€í‰\n");
+            printf("============================");
+            printf("ë²ˆí˜¸ë¥¼ ì…ë ¥í•˜ì„¸ìš”: ");
             scanf("%d", &selection);
             if (selection == 0 || selection < 1 || selection > 2) {
-                printf("Àß¸øµÈ ¼±ÅÃÀÔ´Ï´Ù.\n");
-                Sleep(1000); // 1ÃÊ ´ë±â ÈÄ ´Ù½Ã ¸Ş´º Ãâ·Â
+                printf("ì˜ëª»ëœ ì„ íƒì…ë‹ˆë‹¤.\n");
+                Sleep(1000); // 1ì´ˆ ëŒ€ê¸° í›„ ë‹¤ì‹œ ë©”ë‰´ ì¶œë ¥
                 break;
             }
-            processNextCategory(&categories[2], valleyFilenames, ranges, selection, planHead);
+            processNextCategory(categories->next->next, valleyFilenames, ranges, selection, plan);
             break;
         default:
-            printf("Àß¸øµÈ Å°¿öµåÀÔ´Ï´Ù.\n");
-            Sleep(1000); // 1ÃÊ ´ë±â ÈÄ ´Ù½Ã ¸Ş´º Ãâ·Â
+            printf("ì˜ëª»ëœ í‚¤ì›Œë“œì…ë‹ˆë‹¤.\n");
+            Sleep(1000); // 1ì´ˆ ëŒ€ê¸° í›„ ë‹¤ì‹œ ë©”ë‰´ ì¶œë ¥
         }
     }
 }
 
 int main() {
-    Category categories[3];
-    initCategory(&categories[0], "¹Ù´Ù");
-    initCategory(&categories[1], "µµ½Ã");
-    initCategory(&categories[2], "°è°î");
+    Category* categories = NULL;
+    addCategory(&categories, "ë°”ë‹¤");
+    addCategory(&categories, "ë„ì‹œ");
+    addCategory(&categories, "ê³„ê³¡");
 
-    int ranges[3][2] = { {2, 6}, {9, 13}, {16, 20} }; // ¹üÀ§ ÀúÀå
-    Node* planHead = NULL; // ÃÖÁ¾ ¿©Çà °èÈ¹ ¸®½ºÆ®
+    int ranges[3][2] = { {2, 6}, {9, 13}, {16, 20} }; // ë²”ìœ„ ì €ì¥
+    TravelPlan plan;
+    plan.head = NULL; // ìµœì¢… ì—¬í–‰ ê³„íš ë¦¬ìŠ¤íŠ¸ ì´ˆê¸°í™”
 
-    GUI(categories, ranges, &planHead);
+    GUI(categories, ranges, &plan);
 
-    // ¸Ş¸ğ¸® ÇØÁ¦
-    for (int i = 0; i < 3; i++) {
-        for (int j = 0; j < 3; j++) {
-            freeList(&categories[i].heads[j]);
+    // ë©”ëª¨ë¦¬ í•´ì œ
+    Category* tempCategory = categories;
+    while (tempCategory != NULL) {
+        for (int i = 0; i < 3; i++) {
+            freeList(&tempCategory->locations[i]);
         }
+        Category* toFree = tempCategory;
+        tempCategory = tempCategory->next;
+        free(toFree);
     }
-    freeList(&planHead);
+    freeList(&plan.head);
 
     return 0;
 }
